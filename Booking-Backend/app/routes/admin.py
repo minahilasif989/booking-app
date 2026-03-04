@@ -1,25 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.controllers.doctor_controller import create_doctor, update_doctor, delete_doctor
-from app.controllers.appointment_controller import get_all_appointments
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.security import HTTPBearer
 from app.core.database import get_db_dependency
 from app.core.security import verify_token
-from app.models.doctor import DoctorCreate, DoctorUpdate
-from app.schemas.appointment import AppointmentListOut
 from app.core.config import settings
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
-from datetime import datetime, timedelta, timezone 
-from app.core.config  import settings 
+from datetime import datetime, timedelta, timezone
 import jwt
-from typing import Optional
 from bson import ObjectId
-
-# JWT Settings
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
 router = APIRouter(prefix="/admin", tags=["admin"])
 security = HTTPBearer()
 
@@ -27,13 +15,14 @@ class AdminLogin(BaseModel):
     email: str
     password: str
 
-async def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(security),
-                          db: AsyncIOMotorDatabase = Depends(get_db_dependency)):
-    token = credentials.credentials
-    payload = await verify_token(token)
-    if not payload or payload.get("role") != "admin":
+async def get_current_admin(
+    payload: dict = Depends(verify_token),
+    db: AsyncIOMotorDatabase = Depends(get_db_dependency)
+):
+    if payload.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
     return payload
+
 @router.post("/login")
 async def admin_login(credentials: AdminLogin):
     if credentials.email == settings.ADMIN_EMAIL and credentials.password == settings.ADMIN_PASSWORD:
@@ -104,8 +93,8 @@ async def admin_cancel_appointment(
     db: AsyncIOMotorDatabase = Depends(get_db_dependency)
 ):
     result = await db.appointments.update_one(
-        {"id": appointment_id},
-        {"$set": {"status": "cancelled"}}
+    {"_id": ObjectId(appointment_id)},
+    {"$set": {"status": "cancelled"}}
     )
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Appointment not found")
@@ -119,8 +108,8 @@ async def admin_mark_done(
     db: AsyncIOMotorDatabase = Depends(get_db_dependency)
 ):
     result = await db.appointments.update_one(
-        {"id": appointment_id},
-        {"$set": {"status": "done"}}
+    {"_id": ObjectId(appointment_id)},
+    {"$set": {"status": "done"}}
     )
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Appointment not found")
@@ -138,6 +127,11 @@ async def get_all_doctors(
             {"_id": "1", "name": "Dr. Ahmed Khan", "specialty": "Cardiologist"},
             {"_id": "2", "name": "Dr. john", "specialty": "Dentist"}
         ]
+
+    for doc in doctors:
+        doc["id"] = str(doc["_id"])
+        doc.pop("_id", None)
+
     return doctors
 
 @router.post("/doctors")

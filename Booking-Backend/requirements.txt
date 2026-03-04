@@ -17,3 +17,4 @@ passlib[bcrypt]
 bcrypt
 python-dotenv
 motor>=3.0.0
+argon2-cffi

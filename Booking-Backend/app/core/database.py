@@ -1,15 +1,18 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.core.config import settings
 from typing import AsyncGenerator
-from fastapi import Depends
-async def get_mongodb() -> AsyncGenerator:
-    client = AsyncIOMotorClient(settings.MONGODB_URL)
-    db = client[settings.DATABASE_NAME]
-    try:
-        yield db
-    finally:
-        client.close()
 
-# Yeh dependency routes mein use hogi
-async def get_db_dependency(db=Depends(get_mongodb)):
-    return db
+# Create ONE global client
+client = AsyncIOMotorClient(settings.MONGODB_URL)
+database = client[settings.DATABASE_NAME]
+
+async def get_mongodb() -> AsyncGenerator:
+    try:
+        yield database
+    finally:
+        pass  # Do NOT close client here
+
+
+# Dependency to use in routes
+async def get_db_dependency():
+    return database

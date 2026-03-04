@@ -3,7 +3,6 @@ from app.core.security import verify_password, get_password_hash, create_access_
 from app.models.user import UserCreate
 from app.schemas.user import Token
 from typing import Dict, Any
-import bcrypt
 
 async def create_user(db, user: UserCreate) -> Dict[str, Any]:
     existing_user = await db.users.find_one({"email": user.email})

@@ -94,7 +94,10 @@ jobs:
               -e ALGORITHM="${{ secrets.ALGORITHM }}" \
               ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
 
-
+      - name: Debug Repo Structure
+        run: |
+          pwd
+          ls -la
       # Build frontend
       - name: Build frontend
         run: |

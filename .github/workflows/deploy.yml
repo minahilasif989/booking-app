@@ -98,11 +98,13 @@ jobs:
       # Build frontend
       - name: Build frontend
         run: |
-          cd ../frontend
+          echo "Current directory: $(pwd)"
+          ls -la
+          cd frontend
           npm install
           npm run build
 
       # Upload frontend to S3
       - name: Upload frontend to S3
         run: |
-          aws s3 sync ../frontend/build s3://booking-app-frontend --delete
+          aws s3 sync frontend/build s3://booking-app-frontend --delete

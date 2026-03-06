@@ -98,6 +98,8 @@ jobs:
       # Build frontend
       - name: Build frontend
         run: |
+          echo "Current directory: $(pwd)"
+          ls -la
           cd frontend
           npm install
           npm run build

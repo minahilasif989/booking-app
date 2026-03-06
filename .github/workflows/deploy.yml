@@ -108,7 +108,10 @@ jobs:
         run: |
           cd frontend
           CI=false npm run build
-      
+          
+      - name: Test S3 Access
+        run: aws s3 ls s3://bookingappfrontend
+        
       - name: Upload Frontend to S3
         run: |
           aws s3 sync frontend/build s3://booking-app-frontend --delete

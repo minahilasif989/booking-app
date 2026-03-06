@@ -6,8 +6,9 @@ on:
       - main
 
 env:
-  AWS_REGION: us-east-1
-  BACKEND_IMAGE: booking-backend
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
 
 jobs:
 
@@ -15,32 +16,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
+
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2️⃣ Configure AWS credentials
+      # Configure AWS
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      # 3️⃣ Login to ECR
+      # Login to ECR
       - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
+          | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
 
-      # 4️⃣ Build Docker image
+      # Build Docker image
       - name: Build backend Docker image
         run: |
-          docker build -t $BACKEND_IMAGE ./Booking-Backend
+          docker build -t $ECR_REPOSITORY ./Booking-Backend
 
-      # 5️⃣ Tag and Push Docker image to ECR
-      - name: Push image to ECR
+      # Tag image
+      - name: Tag Docker image
         run: |
-          docker tag $BACKEND_IMAGE:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/$BACKEND_IMAGE:latest
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/$BACKEND_IMAGE:latest
+          docker tag $ECR_REPOSITORY:latest \
+          $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      # Push image to ECR
+      - name: Push Docker image
+        run: |
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
 
   deploy:
@@ -49,15 +57,14 @@ jobs:
 
     steps:
 
-      # 6️⃣ Configure AWS credentials again (for S3 upload)
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      # 7️⃣ Deploy backend on EC2
+      # SSH into EC2 and deploy container
       - name: Deploy backend on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -66,18 +73,18 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
 
-            echo "Login to ECR..."
-            aws ecr get-login-password --region us-east-1 | \
-            docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+            echo "Login to ECR"
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
+            | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
 
-            echo "Stopping old container..."
+            echo "Stopping old container"
             docker stop backend || true
             docker rm backend || true
 
-            echo "Pulling latest image..."
-            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/booking-backend:latest
+            echo "Pull latest image"
+            docker pull ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
 
-            echo "Starting new container..."
+            echo "Run new container"
             docker run -d \
               --name backend \
               -p 8000:8000 \
@@ -85,17 +92,17 @@ jobs:
               -e SECRET_KEY="${{ secrets.SECRET_KEY }}" \
               -e ACCESS_TOKEN_EXPIRE_MINUTES="${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}" \
               -e ALGORITHM="${{ secrets.ALGORITHM }}" \
-              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/booking-backend:latest
+              ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
 
 
-      # 8️⃣ Build frontend
+      # Build frontend
       - name: Build frontend
         run: |
           cd frontend
           npm install
           npm run build
 
-      # 9️⃣ Upload frontend to S3
+      # Upload frontend to S3
       - name: Upload frontend to S3
         run: |
           aws s3 sync frontend/build s3://booking-app-frontend --delete

@@ -18,7 +18,9 @@ jobs:
     steps:
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3 
+        with:
+         path: .
 
       # Configure AWS
       - name: Configure AWS credentials
@@ -98,12 +100,12 @@ jobs:
       # Build frontend
       - name: Build frontend
         run: |
-          ls -la /home/runner/work/booking-app/booking-app  # see all folders
-          cd /home/runner/work/booking-app/frontend  
+          
+          cd frontend  
           npm install
           npm run build
 
       # Upload frontend to S3
       - name: Upload frontend to S3
         run: |
-          aws s3 sync /home/runner/work/booking-app/frontend/build s3://booking-app-frontend --delete
+          aws s3 sync frontend/build s3://booking-app-frontend --delete

@@ -19,9 +19,7 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v3 
-        with:
-         path: booking-app
-
+        
       # Configure AWS
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -40,7 +38,6 @@ jobs:
       - name: Build backend Docker image
         run: |
           docker build -t $ECR_REPOSITORY $GITHUB_WORKSPACE/Booking-Backend
-
       # Tag image
       - name: Tag Docker image
         run: |
@@ -100,11 +97,11 @@ jobs:
       # Build frontend
       - name: Build frontend
         run: |
-          cd $GITHUB_WORKSPACE/booking-app/frontend
+          cd $GITHUB_WORKSPACE/frontend
           npm install
           npm run build
 
       # Upload frontend to S3
       - name: Upload frontend to S3
         run: |
-          aws s3 sync $GITHUB_WORKSPACE/booking-app/frontend/build s3://booking-app-frontend --delete
+          aws s3 sync $GITHUB_WORKSPACE/frontend/build s3://booking-app-frontend --delete

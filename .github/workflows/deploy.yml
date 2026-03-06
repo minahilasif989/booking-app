@@ -18,7 +18,8 @@ jobs:
     steps:
 
       - name: Checkout code
-        uses: actions/checkout@v3 
+        uses: actions/checkout@v3
+        
         
       # Configure AWS
       - name: Configure AWS credentials
@@ -37,7 +38,7 @@ jobs:
       # Build Docker image
       - name: Build backend Docker image
         run: |
-          docker build -t $ECR_REPOSITORY $GITHUB_WORKSPACE/Booking-Backend
+          docker build -t ${{ env.ECR_REPOSITORY }} $GITHUB_WORKSPACE/Booking-Backend
       # Tag image
       - name: Tag Docker image
         run: |
